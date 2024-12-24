@@ -301,6 +301,7 @@
   "com_nav_delete_account_confirm": "Konto löschen - bist du sicher?",
   "com_nav_delete_account_email_placeholder": "Bitte gebe deine Konto-E-Mail ein",
   "com_nav_delete_cache_storage": "TTS-Cache-Speicher löschen",
+  "com_nav_info_encryption": "Ihre Nachrichten werden mit einem Schlüssel verschlüsselt, der von Ihrem Passwort abgeleitet wird. Das Passwort selbst wird nie gespeichert - nur der abgeleitete Schlüssel wird für die Verschlüsselung auf der Backend-Seite verwendet. WICHTIG: Wenn Sie Ihr Passwort vergessen, können Sie Ihre Nachrichten nicht mehr entschlüsseln, da der Verschlüsselungsschlüssel nicht wiederhergestellt werden kann. Stellen Sie sicher, dass Sie Ihr Passwort an einem sicheren Ort aufbewahren.",
   "com_nav_delete_data_info": "Alle deine Daten werden gelöscht.",
   "com_nav_delete_warning": "WARNUNG: Dies wird dein Konto dauerhaft löschen.",
   "com_nav_edge": "Edge",
