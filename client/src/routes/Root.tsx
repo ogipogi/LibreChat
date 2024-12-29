@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useGetStartupConfig } from 'librechat-data-provider/react-query';
+import { useSetRecoilState } from 'recoil';
 import type { ContextType } from '~/common';
 import {
   AgentsMapContext,
@@ -9,11 +10,19 @@ import {
   SearchContext,
   SetConvoProvider,
 } from '~/Providers';
-import { useAuthContext, useAssistantsMap, useAgentsMap, useFileMap, useSearch } from '~/hooks';
+import {
+  useAuthContext,
+  useAssistantsMap,
+  useAgentsMap,
+  useFileMap,
+  useSearch,
+  useLocalStorage,
+} from '~/hooks';
 import TermsAndConditionsModal from '~/components/ui/TermsAndConditionsModal';
 import { useUserTermsQuery } from '~/data-provider';
 import { Nav, MobileNav } from '~/components/Nav';
 import { Banner } from '~/components/Banners';
+import store from '~/store';
 
 export default function Root() {
   const navigate = useNavigate();
@@ -23,6 +32,9 @@ export default function Root() {
     const savedNavVisible = localStorage.getItem('navVisible');
     return savedNavVisible !== null ? JSON.parse(savedNavVisible) : true;
   });
+
+  const [isEncryptionEnabled] = useLocalStorage('isEncryptionEnabled', false);
+  const setIsEncryptionEnabledRecoil = useSetRecoilState(store.isEncryptionEnabled);
 
   const { isAuthenticated, logout } = useAuthContext();
   const assistantsMap = useAssistantsMap({ isAuthenticated });
@@ -34,6 +46,10 @@ export default function Root() {
   const { data: termsData } = useUserTermsQuery({
     enabled: isAuthenticated && config?.interface?.termsOfService?.modalAcceptance === true,
   });
+
+  useEffect(() => {
+    setIsEncryptionEnabledRecoil(isEncryptionEnabled);
+  }, [isEncryptionEnabled, setIsEncryptionEnabledRecoil]);
 
   useEffect(() => {
     if (termsData) {

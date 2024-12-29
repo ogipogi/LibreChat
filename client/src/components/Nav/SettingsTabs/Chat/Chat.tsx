@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import React, { memo } from 'react';
 import MaximizeChatSpace from './MaximizeChatSpace';
 import FontSizeSelector from './FontSizeSelector';
 import SendMessageKeyEnter from './EnterToSend';
@@ -8,6 +8,7 @@ import ChatDirection from './ChatDirection';
 import LaTeXParsing from './LaTeXParsing';
 import ModularChat from './ModularChat';
 import SaveDraft from './SaveDraft';
+import EncryptionSettings from './EncryptionSettings';
 
 function Chat() {
   return (
@@ -17,6 +18,9 @@ function Chat() {
       </div>
       <div className="pb-3">
         <ChatDirection />
+      </div>
+      <div className="pb-3">
+        <EncryptionSettings />
       </div>
       <div className="pb-3">
         <SendMessageKeyEnter />

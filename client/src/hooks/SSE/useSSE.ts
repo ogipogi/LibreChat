@@ -18,6 +18,7 @@ import { useAuthContext } from '~/hooks/AuthContext';
 import store from '~/store';
 import type { EventHandlerParams } from './useEventHandlers';
 import useEventHandlers from './useEventHandlers';
+import { useEncryptionHeaders } from '~/hooks/useEncryptionHeaders';
 
 type ChatHelpers = Pick<
   EventHandlerParams,
@@ -42,6 +43,7 @@ export default function useSSE(
   const [completed, setCompleted] = useState(new Set());
   const setAbortScroll = useSetRecoilState(store.abortScrollFamily(runIndex));
   const setShowStopButton = useSetRecoilState(store.showStopButtonByIndex(runIndex));
+  const encryptionHeaders = useEncryptionHeaders();
 
   const {
     setMessages,
@@ -97,8 +99,13 @@ export default function useSSE(
 
     const sse = new SSE(payloadData.server, {
       payload: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...encryptionHeaders,
+      },
     });
+    console.log('SSE Headers:', sse.headers);
 
     sse.addEventListener('attachment', (e: MessageEvent) => {
       try {
@@ -197,6 +204,7 @@ export default function useSSE(
           sse.headers = {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
+            ...encryptionHeaders,
           };
 
           request.dispatchTokenUpdatedEvent(token);

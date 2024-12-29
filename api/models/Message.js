@@ -4,6 +4,13 @@ const { logger } = require('~/config');
 
 const idSchema = z.string().uuid();
 
+function getEncryptionOptions(req) {
+  if (req?.headers?.['x-encryption-enabled'] === 'true' && req?.headers?.['x-encryption-key']) {
+    return { encryptionKey: req.headers['x-encryption-key'] };
+  }
+  return null;
+}
+
 /**
  * Saves a message in the database.
  *
@@ -53,12 +60,19 @@ async function saveMessage(req, params, metadata) {
       user: req.user.id,
       messageId: params.newMessageId || params.messageId,
     };
-    const message = await Message.findOneAndUpdate(
+
+    const query = Message.findOneAndUpdate(
       { messageId: params.messageId, user: req.user.id },
       update,
       { upsert: true, new: true },
     );
 
+    const encryptionOptions = getEncryptionOptions(req);
+    if (encryptionOptions) {
+      query.setOptions(encryptionOptions);
+    }
+
+    const message = await query;
     return message.toObject();
   } catch (err) {
     logger.error('Error saving message:', err);
@@ -77,7 +91,7 @@ async function saveMessage(req, params, metadata) {
  * @returns {Promise<Object>} The result of the bulk write operation.
  * @throws {Error} If there is an error in saving messages in bulk.
  */
-async function bulkSaveMessages(messages, overrideTimestamp=false) {
+async function bulkSaveMessages(messages, overrideTimestamp = false) {
   try {
     const bulkOps = messages.map((message) => ({
       updateOne: {
@@ -120,7 +134,6 @@ async function recordMessage({
   ...rest
 }) {
   try {
-    // No parsing of convoId as may use threadId
     const message = {
       user,
       endpoint,
@@ -130,10 +143,16 @@ async function recordMessage({
       ...rest,
     };
 
-    return await Message.findOneAndUpdate({ user, messageId }, message, {
+    const query = Message.findOneAndUpdate({ user, messageId }, message, {
       upsert: true,
       new: true,
     });
+
+    if (rest.encryptionKey && rest.isEncrypted) {
+      query.setOptions({ encryptionKey: rest.encryptionKey });
+    }
+
+    return await query;
   } catch (err) {
     logger.error('Error recording message:', err);
     throw err;
@@ -154,7 +173,14 @@ async function recordMessage({
  */
 async function updateMessageText(req, { messageId, text }) {
   try {
-    await Message.updateOne({ messageId, user: req.user.id }, { text });
+    const query = Message.updateOne({ messageId, user: req.user.id }, { text });
+
+    const encryptionOptions = getEncryptionOptions(req);
+    if (encryptionOptions) {
+      query.setOptions(encryptionOptions);
+    }
+
+    await query;
   } catch (err) {
     logger.error('Error updating message text:', err);
     throw err;
@@ -183,13 +209,15 @@ async function updateMessage(req, message, metadata) {
   try {
     const { messageId, ...update } = message;
     update.isEdited = true;
-    const updatedMessage = await Message.findOneAndUpdate(
-      { messageId, user: req.user.id },
-      update,
-      {
-        new: true,
-      },
-    );
+
+    const query = Message.findOneAndUpdate({ messageId, user: req.user.id }, update, { new: true });
+
+    const encryptionOptions = getEncryptionOptions(req);
+    if (encryptionOptions) {
+      query.setOptions(encryptionOptions);
+    }
+
+    const updatedMessage = await query;
 
     if (!updatedMessage) {
       throw new Error('Message not found or user not authorized.');
@@ -228,11 +256,20 @@ async function updateMessage(req, message, metadata) {
  */
 async function deleteMessagesSince(req, { messageId, conversationId }) {
   try {
-    const message = await Message.findOne({ messageId, user: req.user.id }).lean();
+    const query = Message.findOne({ messageId, user: req.user.id });
+    const encryptionOptions = getEncryptionOptions(req);
+    if (encryptionOptions) {
+      query.setOptions(encryptionOptions);
+    }
+
+    const message = await query.lean();
 
     if (message) {
-      const query = Message.find({ conversationId, user: req.user.id });
-      return await query.deleteMany({
+      const deleteQuery = Message.find({ conversationId, user: req.user.id });
+      if (encryptionOptions) {
+        deleteQuery.setOptions(encryptionOptions);
+      }
+      return await deleteQuery.deleteMany({
         createdAt: { $gt: message.createdAt },
       });
     }
@@ -254,11 +291,20 @@ async function deleteMessagesSince(req, { messageId, conversationId }) {
  */
 async function getMessages(filter, select) {
   try {
-    if (select) {
-      return await Message.find(filter).select(select).sort({ createdAt: 1 }).lean();
+    const query = Message.find(filter);
+
+    if (filter.encryptionKey) {
+      query.setOptions({
+        encryptionKey: filter.encryptionKey,
+      });
+      delete filter.encryptionKey; // Remove from filter after setting options
     }
 
-    return await Message.find(filter).sort({ createdAt: 1 }).lean();
+    if (select) {
+      query.select(select);
+    }
+
+    return await query.sort({ createdAt: 1 }).lean();
   } catch (err) {
     logger.error('Error getting messages:', err);
     throw err;
@@ -275,10 +321,12 @@ async function getMessages(filter, select) {
  */
 async function getMessage({ user, messageId }) {
   try {
-    return await Message.findOne({
+    const query = Message.findOne({
       user,
       messageId,
-    }).lean();
+    });
+
+    return await query.lean();
   } catch (err) {
     logger.error('Error getting message:', err);
     throw err;

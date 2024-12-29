@@ -1,8 +1,8 @@
 const { nanoid } = require('nanoid');
 const { Constants } = require('librechat-data-provider');
 const SharedLink = require('./schema/shareSchema');
-const { getMessages } = require('./Message');
 const logger = require('~/config/winston');
+const { getMessages } = require('./Message');
 
 /**
  * Anonymizes a conversation ID
@@ -54,18 +54,14 @@ function anonymizeMessages(messages, newConvoId) {
     const newMessageId = anonymizeMessageId(message.messageId);
     idMap.set(message.messageId, newMessageId);
 
-    const anonymizedMessage = Object.assign(message, {
+    return {
+      ...message,
       messageId: newMessageId,
       parentMessageId:
         idMap.get(message.parentMessageId) || anonymizeMessageId(message.parentMessageId),
       conversationId: newConvoId,
-    });
-
-    if (anonymizedMessage.model && anonymizedMessage.model.startsWith('asst_')) {
-      anonymizedMessage.model = anonymizeAssistantId();
-    }
-
-    return anonymizedMessage;
+      model: message.model?.startsWith('asst_') ? anonymizeAssistantId() : message.model,
+    };
   });
 }
 
@@ -94,7 +90,7 @@ async function getSharedMessages(shareId) {
       messages: anonymizeMessages(share.messages, newConvoId),
     });
   } catch (error) {
-    logger.error('[getShare] Error getting share link', error);
+    logger.error('[getShare] Error getting share link:', error);
     throw new Error('Error getting share link');
   }
 }
@@ -141,34 +137,55 @@ async function getSharedLinks(user, pageNumber = 1, pageSize = 25, isPublic = tr
  * @param {string} shareData.conversationId - The conversation ID
  * @returns {Promise<object>} The created shared link
  */
-async function createSharedLink(user, { conversationId, ...shareData }) {
+async function createSharedLink(user, { conversationId, encryptionKey, ...shareData }) {
   try {
-    const share = await SharedLink.findOne({ conversationId }).select('-_id -__v -user').lean();
-    if (share) {
+    // Check if share exists
+    const existingShare = await SharedLink.findOne({ conversationId })
+      .select('-_id -__v -user')
+      .lean();
+
+    if (existingShare) {
       const newConvoId = anonymizeConvoId();
-      const sharedConvo = anonymizeConvo(share);
+      const sharedConvo = anonymizeConvo(existingShare);
       return Object.assign(sharedConvo, {
         conversationId: newConvoId,
-        messages: anonymizeMessages(share.messages, newConvoId),
+        messages: anonymizeMessages(existingShare.messages, newConvoId),
       });
     }
 
+    const encryptedMessages = await getMessages({
+      conversationId,
+      encryptionKey,
+    });
+
+    const unencryptedMessages = encryptedMessages.map((message) => {
+      const { _id, __v, ...cleanMessage } = message;
+      return cleanMessage;
+    });
+
     const shareId = nanoid();
-    const messages = await getMessages({ conversationId });
-    const update = { ...shareData, shareId, messages, user };
-    const newShare = await SharedLink.findOneAndUpdate({ conversationId, user }, update, {
-      new: true,
-      upsert: true,
-    }).lean();
+    const newShare = await SharedLink.create({
+      ...shareData,
+      shareId,
+      messages: unencryptedMessages,
+      user,
+      conversationId,
+      isPublic: true,
+    });
+
+    const sharedDoc = await SharedLink.findOne({ shareId: newShare.shareId })
+      .select('-_id -__v -user')
+      .lean();
 
     const newConvoId = anonymizeConvoId();
-    const sharedConvo = anonymizeConvo(newShare);
+    const sharedConvo = anonymizeConvo(sharedDoc);
+
     return Object.assign(sharedConvo, {
       conversationId: newConvoId,
-      messages: anonymizeMessages(newShare.messages, newConvoId),
+      messages: anonymizeMessages(sharedDoc.messages, newConvoId),
     });
   } catch (error) {
-    logger.error('[createSharedLink] Error creating shared link', error);
+    logger.error('[createSharedLink] Error creating shared link:', error);
     throw new Error('Error creating shared link');
   }
 }
@@ -180,28 +197,46 @@ async function createSharedLink(user, { conversationId, ...shareData }) {
  * @param {string} shareData.conversationId - The conversation ID
  * @returns {Promise<object>} The updated shared link
  */
-async function updateSharedLink(user, { conversationId, ...shareData }) {
+async function updateSharedLink(user, { conversationId, encryptionKey, ...shareData }) {
   try {
-    const share = await SharedLink.findOne({ conversationId }).select('-_id -__v -user').lean();
+    const share = await SharedLink.findOne({ conversationId, user });
     if (!share) {
       return { message: 'Share not found' };
     }
 
-    const messages = await getMessages({ conversationId });
-    const update = { ...shareData, messages, user };
-    const updatedShare = await SharedLink.findOneAndUpdate({ conversationId, user }, update, {
-      new: true,
-      upsert: false,
-    }).lean();
+    // Get messages with decryption
+    const encryptedMessages = await getMessages({
+      conversationId,
+      encryptionKey,
+    });
+
+    // Create clean, decrypted copies
+    const unencryptedMessages = encryptedMessages.map((message) => {
+      const { _id, __v, ...cleanMessage } = message;
+      return cleanMessage; // Messages are already decrypted by getMessages
+    });
+
+    // Update share document with decrypted messages
+    const updatedShare = await SharedLink.findOneAndUpdate(
+      { conversationId, user },
+      {
+        ...shareData,
+        messages: unencryptedMessages, // Store decrypted messages directly
+      },
+      { new: true },
+    )
+      .select('-_id -__v -user')
+      .lean();
 
     const newConvoId = anonymizeConvoId();
     const sharedConvo = anonymizeConvo(updatedShare);
+
     return Object.assign(sharedConvo, {
       conversationId: newConvoId,
       messages: anonymizeMessages(updatedShare.messages, newConvoId),
     });
   } catch (error) {
-    logger.error('[updateSharedLink] Error updating shared link', error);
+    logger.error('[updateSharedLink] Error updating shared link:', error);
     throw new Error('Error updating shared link');
   }
 }

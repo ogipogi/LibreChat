@@ -1,33 +1,22 @@
 const mongoose = require('mongoose');
 
-const shareSchema = mongoose.Schema(
+const shareSchema = new mongoose.Schema(
   {
+    shareId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     conversationId: {
       type: String,
       required: true,
     },
-    title: {
-      type: String,
-      index: true,
-    },
     user: {
       type: String,
-      index: true,
+      required: true,
     },
-    messages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }],
-    shareId: {
-      type: String,
-      index: true,
-    },
+    messages: [mongoose.Schema.Types.Mixed], // Store messages directly
     isPublic: {
-      type: Boolean,
-      default: false,
-    },
-    isVisible: {
-      type: Boolean,
-      default: false,
-    },
-    isAnonymous: {
       type: Boolean,
       default: true,
     },
@@ -35,4 +24,6 @@ const shareSchema = mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model('SharedLink', shareSchema);
+const SharedLink = mongoose.models.SharedLink || mongoose.model('SharedLink', shareSchema);
+
+module.exports = SharedLink;
