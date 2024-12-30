@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '~/components';
 import useLocalStorage from '~/hooks/useLocalStorage';
-import { useAuthContext } from '~/hooks';
+import HoverCardSettings from '../HoverCardSettings';
+import { useAuthContext, useLocalize } from '~/hooks';
 
 const EncryptionSettings = () => {
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useLocalStorage(
@@ -14,6 +15,7 @@ const EncryptionSettings = () => {
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const { token } = useAuthContext();
+  const localize = useLocalize();
 
   const generateKeyFromPassword = async (password: string) => {
     const encoder = new TextEncoder();
@@ -145,7 +147,8 @@ const EncryptionSettings = () => {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-2">
-        <span>End-to-End Encryption</span>
+        <span>{localize('com_nav_encryption')}</span>
+        <HoverCardSettings side="bottom" text="com_nav_info_encryption" />
         {showPasswordInput && (
           <form onSubmit={handlePasswordSubmit} className="flex items-center">
             <input

@@ -772,6 +772,7 @@ export default {
   com_nav_user_name_display: 'Display username in messages',
   com_nav_save_drafts: 'Save drafts locally',
   com_nav_chat_direction: 'Chat direction',
+  com_nav_encryption: 'Encryption',
   com_nav_show_code: 'Always show code when using code interpreter',
   com_nav_auto_send_prompts: 'Auto-send Prompts',
   com_nav_always_make_prod: 'Always make new versions production',
@@ -847,6 +848,8 @@ export default {
     'This action will revoke and remove all the API keys that you have provided. You will need to re-enter these credentials to continue using those endpoints.',
   com_nav_info_delete_cache_storage:
     'This action will delete all cached TTS (Text-to-Speech) audio files stored on your device. Cached audio files are used to speed up playback of previously generated TTS audio, but they can consume storage space on your device.',
+  com_nav_info_encryption:
+    'Your messages will be encrypted using a key derived from your password. The password itself is never stored - only the derived key is used for encryption on backend side. IMPORTANT: If you forget your password, you will not be able to decrypt your messages as the encryption key cannot be recovered. Make sure to save your password in a secure location.',
   // Command Settings Tab
   com_nav_chat_commands: 'Chat Commands',
   com_nav_chat_commands_info:

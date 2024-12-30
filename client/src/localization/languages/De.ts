@@ -654,6 +654,7 @@ export default {
   com_nav_user_name_display: 'Benutzernamen in Nachrichten anzeigen',
   com_nav_save_drafts: 'Entwürfe lokal speichern',
   com_nav_chat_direction: 'Chat-Richtung',
+  com_nav_encryption: 'Verschlüsselung',
   com_nav_show_code: 'Code immer anzeigen, wenn der Code-Interpreter verwendet wird',
   com_nav_auto_send_prompts: 'Prompts automatisch senden',
   com_nav_always_make_prod: 'Neue Versionen direkt produktiv nehmen',
@@ -698,6 +699,8 @@ export default {
   com_nav_browser: 'Browser',
   com_nav_external: 'Extern',
   com_nav_delete_cache_storage: 'TTS-Cache-Speicher löschen',
+  com_nav_info_encryption:
+    'Ihre Nachrichten werden mit einem Schlüssel verschlüsselt, der von Ihrem Passwort abgeleitet wird. Das Passwort selbst wird nie gespeichert - nur der abgeleitete Schlüssel wird für die Verschlüsselung auf der Backend-Seite verwendet. WICHTIG: Wenn Sie Ihr Passwort vergessen, können Sie Ihre Nachrichten nicht mehr entschlüsseln, da der Verschlüsselungsschlüssel nicht wiederhergestellt werden kann. Stellen Sie sicher, dass Sie Ihr Passwort an einem sicheren Ort aufbewahren.',
   com_nav_enable_cache_tts: 'TTS-Caching aktivieren',
   com_nav_voice_select: 'Stimme',
   com_nav_enable_cloud_browser_voice: 'Cloud-basierte Stimmen verwenden',
