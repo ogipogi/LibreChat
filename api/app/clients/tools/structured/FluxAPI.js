@@ -4,7 +4,7 @@ const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 const { Tool } = require('@langchain/core/tools');
 const { HttpsProxyAgent } = require('https-proxy-agent');
-const { FileContext, ContentTypes } = require('librechat-data-provider');
+const { FileContext, ContentTypes, EModelEndpoint } = require('librechat-data-provider');
 const { logger } = require('~/config');
 
 const displayMessage =
@@ -37,6 +37,9 @@ class FluxAPI extends Tool {
     /** @type {boolean} **/
     this.isAgent = fields.isAgent;
     this.returnMetadata = fields.returnMetadata ?? false;
+
+    /** @type {string} The provider being used (bedrock, anthropic, openai, etc.) */
+    this.provider = fields.provider;
 
     if (fields.processFileURL) {
       /** @type {processFileURL} Necessary for output to contain all image metadata. */
@@ -300,22 +303,42 @@ class FluxAPI extends Tool {
         const imageResponse = await fetch(imageUrl, fetchOptions);
         const arrayBuffer = await imageResponse.arrayBuffer();
         const base64 = Buffer.from(arrayBuffer).toString('base64');
-        const content = [
-          {
-            type: ContentTypes.IMAGE_URL,
-            image_url: {
-              url: `data:image/png;base64,${base64}`,
-            },
-          },
-        ];
 
-        const response = [
+        if (this.provider === EModelEndpoint.bedrock) {
+          return [
+            {
+              type: ContentTypes.TEXT,
+              text: displayMessage,
+            },
+            {
+              content: [
+                {
+                  type: ContentTypes.IMAGE_URL,
+                  image_url: {
+                    url: `data:image/png;base64,${base64}`,
+                  },
+                },
+              ],
+            },
+          ];
+        }
+
+        return [
           {
             type: ContentTypes.TEXT,
             text: displayMessage,
           },
+          {
+            content: [
+              {
+                type: ContentTypes.IMAGE_URL,
+                image_url: {
+                  url: `data:image/png;base64,${base64}`,
+                },
+              },
+            ],
+          },
         ];
-        return [response, { content }];
       } catch (error) {
         logger.error('Error processing image for agent:', error);
         return this.returnValue(`Failed to process the image. ${error.message}`);
